@@ -1,11 +1,20 @@
-const mysql = require('mysql2');
+const { Pool } = require('pg');
 
-const pool = mysql.createPool({
-  host: 'localhost',
-  user: 'root',
-  password: '', 
-  database: 'booking',
-  port: 3306 
+const pool = new Pool({
+  connectionString: "process.env.DATABASE_URL",
+
+  ssl: {
+    rejectUnauthorized: false
+  }
 });
 
-module.exports = pool.promise();
+
+pool.query('SELECT NOW()', (err, res) => {
+  if (err) {
+    console.error('Gabim lidhjeje me Supabase:', err);
+  } else {
+    console.log('Lidhja me Supabase u krye me SUCKSES!');
+  }
+});
+
+module.exports = pool;
