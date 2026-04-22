@@ -18,12 +18,12 @@ exports.processBooking = async (req, res) => {
         }
 
         
-        const [overlaps] = await db.query(
+        const [overlaps] = await db.execute(
             `SELECT id FROM bookings 
-             WHERE room_id = $1 
+             WHERE room_id = ? 
              AND statusi != 'anulluar'
              AND (
-                (data_hyrjes < $2 AND data_daljes > $3)
+                (data_hyrjes < ? AND data_daljes > ?)
              )`,
             [room_id, data_daljes, data_hyrjes]
         );
@@ -36,15 +36,15 @@ exports.processBooking = async (req, res) => {
         }
 
    
-        const [result] = await db.query(
+        const [result] = await db.execute(
             `INSERT INTO bookings (user_id, property_id, room_id, data_hyrjes, data_daljes, totali_pageses, statusi) 
-             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
             [user_id, property_id, room_id, data_hyrjes, data_daljes, totali_pageses, 'në pritje']
         );
 
        
-        const [userRows] = await db.query('SELECT emri, mbiemri FROM users WHERE id = $1', [user_id]);
-        const [roomRows] = await db.query('SELECT tipi FROM rooms WHERE id = $1', [room_id]);
+        const [userRows] = await db.execute('SELECT emri, mbiemri FROM users WHERE id = ?', [user_id]);
+        const [roomRows] = await db.execute('SELECT tipi FROM rooms WHERE id = ?', [room_id]);
 
         const emriKlientit = userRows.length > 0 ? `${userRows[0].emri} ${userRows[0].mbiemri}` : "Klient i Ri";
         const emriDhomes = roomRows.length > 0 ? roomRows[0].tipi : "Dhomë";
@@ -55,8 +55,8 @@ exports.processBooking = async (req, res) => {
 
         const mesazhiFinal = `${emriKlientit}: rezervoi "${emriDhomes}" me vlerë €${totali_pageses} (${periudha}).`;
 
-        await db.query(
-            `INSERT INTO notifications (user_id, mesazhi) VALUES ($1, $2)`,
+        await db.execute(
+            `INSERT INTO notifications (user_id, mesazhi) VALUES (?, ?)`,
             [user_id, mesazhiFinal]
         );
 
@@ -98,7 +98,7 @@ exports.deleteBooking = async (req, res) => {
              FROM bookings b 
              JOIN rooms r ON b.room_id = r.id 
              JOIN users u ON b.user_id = u.id
-             WHERE b.id = $1`, [id]
+             WHERE b.id = ?`, [id]
         );
 
         if (bookingInfo.length === 0) return res.status(404).json({ success: false });
@@ -108,13 +108,13 @@ exports.deleteBooking = async (req, res) => {
         const emriAutori = `${bookingInfo[0].emri} ${bookingInfo[0].mbiemri}`;
 
         await conn.beginTransaction();
-        await conn.execute('DELETE FROM payments WHERE booking_id = $1', [id]);
-        await conn.execute('DELETE FROM bookings WHERE id = $1', [id]);
+        await conn.execute('DELETE FROM payments WHERE booking_id = ?', [id]);
+        await conn.execute('DELETE FROM bookings WHERE id = ?', [id]);
 
         
         const mesazhiAnullimi = `${emriAutori}: rezervimi për "${emriDhomes}" u anulua.`;
         await conn.execute(
-            'INSERT INTO notifications (user_id, mesazhi) VALUES ($1, $2)',
+            'INSERT INTO notifications (user_id, mesazhi) VALUES (?, ?)',
             [userId, mesazhiAnullimi]
         );
 
@@ -131,7 +131,7 @@ exports.deleteBooking = async (req, res) => {
 exports.getRoomBookings = async (req, res) => {
     try {
         const { roomId } = req.params;
-        const [rows] = await db.query('SELECT data_hyrjes, data_daljes FROM bookings WHERE room_id = $1 AND statusi != $2', [roomId, 'anulluar']);
+        const [rows] = await db.execute('SELECT data_hyrjes, data_daljes FROM bookings WHERE room_id = ? AND statusi != "anulluar"', [roomId]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });

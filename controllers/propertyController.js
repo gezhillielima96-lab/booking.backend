@@ -8,7 +8,7 @@ exports.getProperties = async (req, res) => {
             LEFT JOIN media m ON p.id = m.model_id AND m.model_type = 'property'
             GROUP BY p.id
         `;
-        const [rows] = await db.query(sql);
+        const [rows] = await db.execute(sql);
         res.json(rows);
     } catch (error) {
         console.error("Error te getProperties:", error);
@@ -26,16 +26,16 @@ exports.addProperty = async (req, res) => {
             return res.status(400).json({ message: "Emri dhe Lokacioni janë të detyrueshme!" });
         }
 
-        const [result] = await db.query(
-            'INSERT INTO properties (emri_prones, pershkrimi, lokacioni, kategoria, cmimi) VALUES ($1, $2, $3, $4, $5)',
+        const [result] = await db.execute(
+            'INSERT INTO properties (emri_prones, pershkrimi, lokacioni, kategoria, cmimi) VALUES (?, ?, ?, ?, ?)',
             [emri_prones, pershkrimi || '', lokacioni, kategoria || 1, cmimi || 0]
         );
 
         const propertyId = result.insertId;
 
         if (imagePath) {
-            await db.query(
-                'INSERT INTO media (model_type, model_id, file_path) VALUES ($1, $2, $3)',
+            await db.execute(
+                'INSERT INTO media (model_type, model_id, file_path) VALUES (?, ?, ?)',
                 ['property', propertyId, imagePath]
             );
         }
@@ -51,12 +51,12 @@ exports.addProperty = async (req, res) => {
 exports.getPropertyDetails = async (req, res) => {
     try {
         const { id } = req.params;
-        const [property] = await db.query('SELECT * FROM properties WHERE id = $1', [id]);
-        const [rooms] = await db.query(`
+        const [property] = await db.execute('SELECT * FROM properties WHERE id = ?', [id]);
+        const [rooms] = await db.execute(`
             SELECT r.*, GROUP_CONCAT(m.file_path) as fotot 
             FROM rooms r 
             LEFT JOIN media m ON r.id = m.model_id AND m.model_type = 'room'
-            WHERE r.property_id = $1
+            WHERE r.property_id = ?
             GROUP BY r.id 
         `, [id]);
 
@@ -73,8 +73,8 @@ exports.updateProperty = async (req, res) => {
         const { emri_prones, lokacioni, pershkrimi, kategoria, cmimi } = req.body;
         const imagePath = req.file ? `/uploads/${req.file.filename}` : null;
 
-        const sqlUpdate = `UPDATE properties SET emri_prones = $1, lokacioni = $2, pershkrimi = $3, kategoria = $4, cmimi = $5 WHERE id = $6`;
-        await db.query(sqlUpdate, [
+        const sqlUpdate = `UPDATE properties SET emri_prones = ?, lokacioni = ?, pershkrimi = ?, kategoria = ?, cmimi = ? WHERE id = ?`;
+        await db.execute(sqlUpdate, [
             emri_prones || '', 
             lokacioni || '', 
             pershkrimi || '', 
@@ -83,19 +83,19 @@ exports.updateProperty = async (req, res) => {
             id
         ]);
         if (imagePath) {
-            const [existing] = await db.query(
-                'SELECT id FROM media WHERE model_type = $1 AND model_id = $2', 
-                ['property', id]
+            const [existing] = await db.execute(
+                'SELECT id FROM media WHERE model_type = "property" AND model_id = ?', 
+                [id]
             );
 
             if (existing.length > 0) {
-                await db.query(
-                    'UPDATE media SET file_path = $1 WHERE model_type = $2 AND model_id = $3', 
-                    [imagePath, 'property', id]
+                await db.execute(
+                    'UPDATE media SET file_path = ? WHERE model_type = "property" AND model_id = ?', 
+                    [imagePath, id]
                 );
             } else {
-                await db.query(
-                    'INSERT INTO media (model_type, model_id, file_path) VALUES ($1, $2, $3)', 
+                await db.execute(
+                    'INSERT INTO media (model_type, model_id, file_path) VALUES (?, ?, ?)', 
                     ['property', id, imagePath]
                 );
             }
@@ -111,15 +111,15 @@ exports.deleteProperty = async (req, res) => {
     try {
         const { id } = req.params;
 
-        await db.query('DELETE FROM media WHERE model_type = $1 AND model_id = $2', ['property', id]);
+        await db.execute('DELETE FROM media WHERE model_type = "property" AND model_id = ?', [id]);
         
-        const [rooms] = await db.query('SELECT id FROM rooms WHERE property_id = $1', [id]);
+        const [rooms] = await db.execute('SELECT id FROM rooms WHERE property_id = ?', [id]);
         for (let room of rooms) {
-            await db.query('DELETE FROM media WHERE model_type = $1 AND model_id = $2', ['room', room.id]);
+            await db.execute('DELETE FROM media WHERE model_type = "room" AND model_id = ?', [room.id]);
         }
-        await db.query('DELETE FROM rooms WHERE property_id = $1', [id]);
+        await db.execute('DELETE FROM rooms WHERE property_id = ?', [id]);
 
-        await db.query('DELETE FROM properties WHERE id = $1', [id]);
+        await db.execute('DELETE FROM properties WHERE id = ?', [id]);
 
         res.json({ message: "Prona dhe të gjitha të dhënat e saj u fshinë!" });
     } catch (error) {

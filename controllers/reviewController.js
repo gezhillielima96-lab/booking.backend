@@ -5,8 +5,8 @@ exports.addReview = async (req, res) => {
     try {
         const { user_id, property_id, room_id, nota, komenti, full_name } = req.body;
         
-        const [result] = await db.query(
-            `INSERT INTO reviews (user_id, property_id, room_id, nota, komenti) VALUES ($1, $2, $3, $4, $5)`,
+        const [result] = await db.execute(
+            `INSERT INTO reviews (user_id, property_id, room_id, nota, komenti) VALUES (?, ?, ?, ?, ?)`,
             [user_id, property_id, room_id || null, nota, komenti]
         );
 
@@ -14,8 +14,8 @@ exports.addReview = async (req, res) => {
         const emriAutori = full_name || "Një klient";
         const mesazhiNjoftimit = `${emriAutori}: sapo la një vlerësim me ${nota} yje.`;
         
-        await db.query(
-            `INSERT INTO notifications (user_id, review_id, mesazhi) VALUES ($1, $2, $3 )`,
+        await db.execute(
+            `INSERT INTO notifications (user_id, review_id, mesazhi) VALUES (?, ?, ?)`,
             [user_id, result.insertId, mesazhiNjoftimit]
         );
 
@@ -31,16 +31,16 @@ exports.getPropertyStats = async (req, res) => {
         const { propertyId } = req.params;
         
   
-        const [stats] = await db.query(
-            `SELECT AVG(nota) as mesatarja, COUNT(*) as totali FROM reviews WHERE property_id = $1`, 
+        const [stats] = await db.execute(
+            `SELECT AVG(nota) as mesatarja, COUNT(*) as totali FROM reviews WHERE property_id = ?`, 
             [propertyId]
         );
 
        
-        const [reviews] = await db.query(
+        const [reviews] = await db.execute(
             `SELECT r.*, u.emri, u.mbiemri FROM reviews r 
              JOIN users u ON r.user_id = u.id 
-             WHERE r.property_id = $1 ORDER BY r.created_at DESC`, 
+             WHERE r.property_id = ? ORDER BY r.created_at DESC`, 
             [propertyId]
         );
 
@@ -53,7 +53,7 @@ exports.getPropertyStats = async (req, res) => {
 exports.getReviewsByProperty = async (req, res) => {
     try {
         const { propertyId } = req.params;
-        const [rows] = await db.query('SELECT * FROM reviews WHERE property_id = $1', [propertyId]);
+        const [rows] = await db.execute('SELECT * FROM reviews WHERE property_id = ?', [propertyId]);
         res.json(rows);
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -62,7 +62,7 @@ exports.getReviewsByProperty = async (req, res) => {
 
 exports.getAdminNotifications = async (req, res) => {
     try {
-        const [rows] = await db.query(`
+        const [rows] = await db.execute(`
             SELECT n.*, CONCAT(u.emri, ' ', u.mbiemri) AS autori 
             FROM notifications n
             JOIN users u ON n.user_id = u.id
@@ -78,7 +78,7 @@ exports.getAdminNotifications = async (req, res) => {
 exports.deleteNotification = async (req, res) => {
     try {
         const { id } = req.params;
-        await db.query('UPDATE notifications SET statusi_leximit = TRUE WHERE id = $1', [id]);
+        await db.execute('UPDATE notifications SET statusi_leximit = TRUE WHERE id = ?', [id]);
         res.json({ message: "Njoftimi u lexua" });
     } catch (err) {
         res.status(500).json({ error: err.message });
@@ -88,8 +88,8 @@ exports.deleteNotification = async (req, res) => {
 exports.getUserNotifications = async (req, res) => {
     try {
         const { userId } = req.params;
-        const [rows] = await db.query(
-            'SELECT * FROM notifications WHERE user_id = $1 ORDER BY krijuar_me DESC', 
+        const [rows] = await db.execute(
+            'SELECT * FROM notifications WHERE user_id = ? ORDER BY krijuar_me DESC', 
             [userId]
         );
         res.json(rows);

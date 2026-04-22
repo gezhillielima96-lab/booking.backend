@@ -28,8 +28,8 @@ exports.register = async (req, res) => {
       
         const mesazhiRegjistrimit = `${emri} ${mbiemri}: u regjistrua si përdorues i ri në sistem.`;
 
-        await db.query(
-            `INSERT INTO notifications (user_id, mesazhi) VALUES ($1, $2)`,
+        await db.execute(
+            `INSERT INTO notifications (user_id, mesazhi) VALUES (?, ?)`,
             [newUserID, mesazhiRegjistrimit]
         );
 
@@ -63,8 +63,8 @@ exports.login = async (req, res) => {
        
         const mesazhiLogimit = `${user.emri} ${user.mbiemri}: sapo u kyç në platformë.`;
 
-        await db.query(
-            `INSERT INTO notifications (user_id, mesazhi) VALUES ($1, $2)`,
+        await db.execute(
+            `INSERT INTO notifications (user_id, mesazhi) VALUES (?, ?)`,
             [user.id, mesazhiLogimit]
         );
 

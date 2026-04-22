@@ -1,7 +1,6 @@
 const db = require('../config/db');
 
 const Booking = {
-    // 1. Merr te dhenat per Admin Dashboard (JOIN-et mbeten njesoj)
     getAdminDashboard: async () => {
         const sql = `
             SELECT 
@@ -18,11 +17,10 @@ const Booking = {
             LEFT JOIN payments pay ON b.id = pay.booking_id
             ORDER BY b.created_at DESC
         `;
-        const result = await db.query(sql); // Ndryshuar ne .query()
-        return result.rows; // Kthejme .rows
+        const [rows] = await db.execute(sql);
+        return rows;
     },
 
-    // 2. Merr historikun e rezervimeve per nje perdorues specifit
     getUserHistory: async (userId) => {
         const sql = `
             SELECT 
@@ -32,12 +30,11 @@ const Booking = {
             FROM bookings b
             JOIN rooms r ON b.room_id = r.id
             JOIN properties p ON r.property_id = p.id
-            WHERE b.user_id = $1
+            WHERE b.user_id = ?
             ORDER BY b.created_at DESC
         `;
-        // Ndryshuar ne $1 dhe .query()
-        const result = await db.query(sql, [userId]); 
-        return result.rows; // Kthejme .rows
+        const [rows] = await db.execute(sql, [userId]);
+        return rows;
     }
 };
 
