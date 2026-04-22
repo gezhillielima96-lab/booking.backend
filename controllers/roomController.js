@@ -6,8 +6,8 @@ exports.addRoom = async (req, res) => {
         const images = req.files; 
 
        
-        const [result] = await db.execute(
-            'INSERT INTO rooms (property_id, tipi, cmimi, kapaciteti) VALUES (?, ?, ?, ?)',
+        const [result] = await db.query(
+            'INSERT INTO rooms (property_id, tipi, cmimi, kapaciteti) VALUES ($1, $2, $3, $4)',
             [property_id, tipi, cmimi, kapaciteti || 1]
         );
 
@@ -16,8 +16,8 @@ exports.addRoom = async (req, res) => {
        
         if (images && images.length > 0) {
             const mediaQueries = images.map(img => {
-                return db.execute(
-                    'INSERT INTO media (model_type, model_id, file_path) VALUES (?, ?, ?)',
+                return db.query(
+                    'INSERT INTO media (model_type, model_id, file_path) VALUES ($1, $2, $3)',
                     ['room', roomId, `/uploads/${img.filename}`]
                 );
             });
@@ -44,7 +44,7 @@ exports.getRoomsByProperty = async (req, res) => {
             GROUP BY r.id
         `;
         
-        const [rows] = await db.execute(sql, [propertyId]);
+        const [rows] = await db.query(sql, [propertyId]);
         res.json(rows);
     } catch (error) {
         console.error("Error te getRoomsByProperty:", error);
@@ -59,19 +59,19 @@ exports.updateRoom = async (req, res) => {
         const images = req.files; 
 
     
-        await db.execute(
-            'UPDATE rooms SET property_id = ?, tipi = ?, cmimi = ?, kapaciteti = ? WHERE id = ?',
+        await db.query(
+            'UPDATE rooms SET property_id = $1, tipi = $2, cmimi = $3, kapaciteti = $4 WHERE id = $5',
             [property_id, tipi, cmimi, kapaciteti, id]
         );
 
         if (images && images.length > 0) {
           
-            await db.execute('DELETE FROM media WHERE model_type = "room" AND model_id = ?', [id]);
+            await db.query('DELETE FROM media WHERE model_type = "room" AND model_id = $1', [id]);
 
             
             const mediaQueries = images.map(img => {
-                return db.execute(
-                    'INSERT INTO media (model_type, model_id, file_path) VALUES (?, ?, ?)',
+                return db.query(
+                    'INSERT INTO media (model_type, model_id, file_path) VALUES ($1, $2, $3)',
                     ['room', id, `/uploads/${img.filename}`]
                 );
             });
@@ -91,10 +91,10 @@ exports.deleteRoom = async (req, res) => {
         const { id } = req.params;
 
        
-        await db.execute('DELETE FROM media WHERE model_type = "room" AND model_id = ?', [id]);
+        await db.query('DELETE FROM media WHERE model_type = "room" AND model_id = $1', [id]);
         
        
-        await db.execute('DELETE FROM rooms WHERE id = ?', [id]);
+        await db.query('DELETE FROM rooms WHERE id = $1', [id]);
         
         res.json({ message: "Dhoma dhe të gjitha fotot e saj u fshinë!" });
     } catch (error) {
